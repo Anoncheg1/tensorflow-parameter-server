@@ -1,0 +1,6 @@
+This is Model.fit implementation approach.
+
+This example working with two parameter servers.
+
+- run.sh - a starter script
+- smallmodel.py - MNIST dataset and perceptron NN.
