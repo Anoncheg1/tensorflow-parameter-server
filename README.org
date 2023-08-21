@@ -1,6 +1,8 @@
-This is Model.fit implementation approach.
+This is tested Model.fit implementation approach.
 
 This example working with two parameter servers.
 
 - run.sh - a starter script for smallmodel.py and interception of logs from strout and stderr from Tensorflow.
 - smallmodel.py - MNIST dataset and perceptron NN.
+
+For two and more parameter servers model.load will not work, you should use Tensorflow Serving.
