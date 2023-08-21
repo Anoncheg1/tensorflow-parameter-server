@@ -2,5 +2,5 @@ This is Model.fit implementation approach.
 
 This example working with two parameter servers.
 
-- run.sh - a starter script
+- run.sh - a starter script for smallmodel.py and interception of logs from strout and stderr from Tensorflow.
 - smallmodel.py - MNIST dataset and perceptron NN.
