@@ -11,7 +11,7 @@ import tensorflow_datasets as tfds
 
 # ---- who do what
 cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver()
-print("cluster_resolver", cluster_resolver)
+print("cluster_resolver", cluster_resolver.cluster_spec())
 # -- set GPU for worker
 def set_gpu():
     gpus = tf.config.list_physical_devices('GPU')
@@ -41,8 +41,9 @@ def set_gpu():
             print(e)
 
 # if cluster_resolver.task_type in ("worker", "ps"):
-set_gpu() # for all
+# set_gpu() # for all
 
+NUM_WORKERS=len(cluster_resolver.cluster_spec().job_tasks('worker'))
 # -- wait for task for worker and ps
 if cluster_resolver.task_type in ("worker", "ps"):
     # Start a TensorFlow server and wait.
@@ -79,11 +80,11 @@ else:  # Run the coordinator.
         tf.distribute.experimental.partitioners.MinSizePartitioner(
             min_shard_bytes=(256 << 10),
             max_shards=NUM_PS))
-
+    print("aa")
     strategy = tf.distribute.ParameterServerStrategy(
         cluster_resolver,
         variable_partitioner=variable_partitioner)
-
+    print("bb")
     # -- data
     # mnist = tfds.load('mnist', split='train', shuffle_files=False, data_dir="/workspace/mnist")
     # (x_train, y_train), (x_test, y_test) = mnist.load_data(data_dir="/workspace/mnist")
@@ -92,11 +93,11 @@ else:  # Run the coordinator.
     # -- trivial model
     with strategy.scope(): # dataset_fn will be wrapped into a tf.function and then executed on each worker to generate the data pipeline.
         # with tf.device('/device:GPU:0'):
-        batch_size=32
+        batch_size=1
 
         def normalize_img(data):
             """Normalizes images: `uint8` -> `float32`."""
-            tf.print("Dataset.map(e_s_s)", tf.reduce_sum(data['image']))
+            tf.print("Dataset.map(e_s_s), batch:", tf.reduce_sum(data['image']))
             image = data['image']
             label = data['label']
             return tf.cast(image, tf.float32) / 255., label
@@ -106,10 +107,14 @@ else:  # Run the coordinator.
         options = tf.data.Options()
         options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.FILE
         #train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-        train_dataset = tfds.load('mnist', split='train', shuffle_files=False, data_dir='/datasets/tensorflow_datasets')
-        train_dataset = train_dataset.with_options(options)
-        train_dataset = train_dataset.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
-        train_dataset = train_dataset.shuffle(600).repeat().batch(batch_size).prefetch(300)
+        train_dataset = tfds.load('mnist', split='train', shuffle_files=False, data_dir='/datasets/DataSetAI/tensorflow_datasets/')
+        print("shard", NUM_WORKERS)
+
+        train_dataset = train_dataset.shard(NUM_WORKERS, cluster_resolver.task_id) # separate
+        train_dataset = train_dataset.with_options(options) # spread
+        train_dataset = train_dataset.shuffle(25).repeat() # shuffle
+        train_dataset = train_dataset.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE) # transform
+        train_dataset = train_dataset.batch(batch_size).prefetch(5) # batch
 
         # train_dataset = strategy.experimental_distribute_dataset(train_dataset)
 
@@ -135,20 +140,23 @@ else:  # Run the coordinator.
         model.summary()
 
     # -- train
-    model.fit(train_dataset, epochs=3, steps_per_epoch=100)
+    model.fit(train_dataset, epochs=1, steps_per_epoch=50)
     # -- save
     model.save('aa.keras', overwrite=True, save_format="tf")  # The file needs to end with the .keras extension save_format="tf"
-    model = tf.keras.models.load_model('aa.keras', compile=False, safe_mode=False)
-    validation_dataset = tfds.load('mnist', split='test', shuffle_files=False, data_dir='/datasets/tensorflow_datasets')
-    validation_dataset = validation_dataset.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
-    validation_dataset = validation_dataset.shuffle(600).batch(batch_size)
-    # -- checks the model's performance
-    model.evaluate(validation_dataset, verbose=2)
-    # -- inferece
-    validation_dataset = validation_dataset.rebatch(1)
-    # print(validation_dataset.__iter__().next())
-    image, label = validation_dataset.__iter__().next()
-    predictions = model(image).numpy()
-    import numpy as np
-    print(np.argmax(predictions))
-    print(label)
+    # model = tf.keras.models.load_model('aa.keras', compile=False, safe_mode=False)
+    # validation_dataset = tfds.load('mnist', split='test', shuffle_files=False, data_dir='/datasets/DataSetAI/tensorflow_datasets/')
+    # validation_dataset = validation_dataset.shuffle(10)
+    # validation_dataset = validation_dataset.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
+    # validation_dataset = validation_dataset.batch(batch_size)
+
+    # # -- checks the model's performance
+    # model.compile(tf.keras.optimizers.legacy.Adam(), loss=loss_fn, steps_per_execution=10)
+    # model.evaluate(validation_dataset, verbose=2)
+    # # -- inferece
+    # validation_dataset = validation_dataset.rebatch(1)
+    # # print(validation_dataset.__iter__().next())
+    # image, label = validation_dataset.__iter__().next()
+    # predictions = model(image).numpy()
+    # import numpy as np
+    # print(np.argmax(predictions))
+    # print(label)

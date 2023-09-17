@@ -1,0 +1,271 @@
+---
+
+apiVersion: kubeflow.org/v1
+kind: TFJob
+metadata:
+  name: paramserv
+  # namespace: mlsynth
+  namespace: ml1
+spec:
+  tfReplicaSpecs:
+    PS:
+      replicas: 1
+      restartPolicy: Never
+      template:
+        metadata:
+          labels:
+            app: parserv
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          containers:
+            - name: tensorflow
+              image: registry.i.sumus.work/kube/mlsynth:latest
+              # env:
+              # - name: CUDA_VISIBLE_DEVICES
+              #   value: "-1"
+              # - name: TF_TASK_INDEX
+              #   value: 0
+              command: ["/bin/bash", "-c"]
+              # args: ["python trainresnet50_paramserv.py --log_dir=/workspace/ps"]
+              # args: ["sleep 3600"]
+              args: ["source a.sh"]
+              # args: ["tail", "-f", "/dev/null"]
+              # args: ["python dist_mnist.py --num_gpus 1"]
+              workingDir: /workspace
+              volumeMounts:
+              # - name: landmark2020
+              #   mountPath: /landmark-retrieval-2020
+              - name: workspace
+                mountPath: /workspace
+              resources:
+                limits:
+                  nvidia.com/gpu: 1
+          # nodeSelector:
+          #   node.name: w2
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - parserv
+                topologyKey: kubernetes.io/hostname
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node.name
+                    operator: In
+                    values:
+                    - w1
+                    - w2
+          volumes:
+            # - name: landmark2020
+            #   nfs:
+            #     server: kube-exp-w2.k8s.sumus.work
+            #     path: /mnt/ssd/landmark-retrieval-2020
+            # - name: landmark2020
+            #   nfs:
+            #     server: "192.168.9.200"
+            #     path: /opt/ai/landmark-retrieval-2020
+            #     readOnly: true
+            - name: datasets
+              nfs:
+                server: kube-exp-w2.k8s.sumus.work
+                path: /mnt/ssd/datasets
+                readOnly: true
+            - name: workspace
+              nfs:
+                server: kube-exp-w2.k8s.sumus.work
+                path: /mnt/ssd/workspace/ML1/
+                readOnly: false
+    Chief:
+      replicas: 1
+      restartPolicy: Never
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          containers:
+            - name: tensorflow
+              image: registry.i.sumus.work/kube/mlsynth:latest
+              # env:
+              # - name: CUDA_VISIBLE_DEVICES
+              #   value: "-1"
+              # - name: TF_TASK_INDEX
+              #   value: 1
+              command: ["/bin/bash", "-c"]
+              # args: ["python trainresnet50_paramserv.py --log_dir=/workspace/ps"]
+              # args: ["sleep 6000"]
+              args: ["source a.sh"]
+              # args: ["tail", "-f", "/dev/null"]
+              # args: ["python dist_mnist.py --num_gpus 1"]
+              workingDir: /workspace
+              volumeMounts:
+              # - name: landmark2020
+              #   mountPath: /landmark-retrieval-2020
+              - name: datasets
+                mountPath: /datasets
+              - name: workspace
+                mountPath: /workspace
+              resources:
+                limits:
+                  nvidia.com/gpu: 1
+          nodeSelector:
+            node.name: w3
+          volumes:
+            # - name: landmark2020
+            #   nfs:
+            #     server: kube-exp-w2.k8s.sumus.work
+            #     path: /mnt/ssd/landmark-retrieval-2020
+            # - name: landmark2020
+            #   nfs:
+            #     server: "192.168.9.200"
+            #     path: /opt/ai/landmark-retrieval-2020
+            #     readOnly: true
+            # - name: datasets
+            #   nfs:
+            #     server: kube-exp-w2.k8s.sumus.work
+            #     path: /mnt/ssd/datasets
+            #     readOnly: true
+            - name: datasets
+              nfs:
+                server: k8s-st04.i.clive.tk
+                path: /exports
+                readOnly: true
+            - name: workspace
+              nfs:
+                server: kube-exp-w2.k8s.sumus.work
+                path: /mnt/ssd/workspace/ML1/
+                readOnly: false
+    Worker:
+      replicas: 2
+      restartPolicy: Never
+      template:
+        metadata:
+          labels:
+            app: workerl
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          containers:
+            - name: tensorflow
+              image: registry.i.sumus.work/kube/mlsynth:latest
+              # env:
+              # - name: TF_TASK_INDEX
+              #   value: 1
+              command: ["/bin/bash", "-c"]
+              # args: ["python trainresnet50_paramserv.py --log_dir=/workspace/ps"]
+              # args: ["sleep 3600"]
+              args: ["source a.sh"]
+              # args: ["tail", "-f", "/dev/null"]
+              # args: ["python dist_mnist.py --num_gpus 1"]
+              workingDir: /workspace
+              volumeMounts:
+              # - name: landmark2020
+              #   mountPath: /landmark-retrieval-2020
+              - name: datasets
+                mountPath: /datasets
+              - name: workspace
+                mountPath: /workspace
+              resources:
+                limits:
+                  nvidia.com/gpu: 1
+          # nodeSelector:
+          #   nodeSelectorTerms:
+          #     matchExpressions:
+          #     - key: node.name
+          #       operator: In
+          #       values:
+          #       - w1
+          #       - w2
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - workerl
+                topologyKey: kubernetes.io/hostname
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node.name
+                    operator: In
+                    values:
+                    - w1
+                    - w2
+          volumes:
+            # - name: landmark2020
+            #   nfs:
+            #     server: kube-exp-w2.k8s.sumus.work
+            #     path: /mnt/ssd/landmark-retrieval-2020
+            # - name: landmark2020
+            #   nfs:
+            #     server: "192.168.9.200"
+            #     path: /opt/ai/landmark-retrieval-2020
+            #     readOnly: true
+            # - name: datasets
+            #   nfs:
+            #     server: kube-exp-w2.k8s.sumus.work
+            #     path: /mnt/ssd/datasets
+            #     readOnly: true
+            - name: datasets
+              nfs:
+                server: k8s-st04.i.clive.tk
+                path: /exports
+                readOnly: true
+            - name: workspace
+              nfs:
+                server: kube-exp-w2.k8s.sumus.work
+                path: /mnt/ssd/workspace/ML1/
+                readOnly: false
+
+
+
+# ---
+
+# apiVersion: "kubeflow.org/v1"
+# kind: "TFJob"
+# metadata:
+#   name: "mnist-tf-job"
+#   namespace: "distmnist"
+# spec:
+#   tfReplicaSpecs:
+#     PS:
+#       replicas: 2
+#       restartPolicy: Never
+#       template:
+#         metadata:
+#           annotations:
+#             sidecar.istio.io/inject: "false"
+#         spec:
+#           containers:
+#             - name: tensorflow
+#               image: kubeflow/tf-dist-mnist-test
+#     Worker:
+#       replicas: 2
+#       restartPolicy: Never
+#       template:
+#         metadata:
+#           annotations:
+#             sidecar.istio.io/inject: "false"
+#         spec:
+#           containers:
+#             - name: tensorflow
+#               image: kubeflow/tf-dist-mnist-test
+
+
+# pytorchjobs.kubeflow.org
+# mpijobs.kubeflow.org
+# mxjobs.kubeflow.org
+# paddlejobs.kubeflow.org
+# tfjobs.kubeflow.org
+# xgboostjobs.kubeflow.org

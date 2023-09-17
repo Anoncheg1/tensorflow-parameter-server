@@ -1,8 +1,24 @@
-This is tested Model.fit implementation approach.
+This is Model.fit implementation approach.
 
-This example working with two parameter servers.
+Code is dirty, it is research phase. For two and more parameter
+ servers model.load will not work, you should use Tensorflow Serving.
+
+*local-resnet-mobilenet.py* - главный файл обучения моделей ResNet и Mobilenet на датасете Landmark 2022 на 1 машине, использует imclassif.py
+
+*param.py* - главный файл обучения ResNet50 и Mobilenet в режиме ParameterServerStrategy на датасете Landmark 2022, использует imclassif.py
+
+*imclassif.py* - вспомогательный файл с созданием модели и загрузкой датасета, использует imtransform.py. Загружаемую модель берет из параметра окружения MODEL_NAME, поддерживваются ResNet50 и Mobilenet для задачи классификации изображений.
+
+*imtransform.py* - вспомогательный файл с трансформацией изображений, oversampling, расчетом class_weight
+
+*bashaliases.sh* - скрипты работы с логами: объединения и нарезания, замера скорости, расчет баланса между воркерами
+
+*paramserv.yaml* - Kubernetes yaml file
+
+** small model - folder
+Обучение в режиме ParameterServerStrategy на минимальной нейронной сети на загружаемом датасете MNIST
+- small-model.py
 
 - run.sh - a starter script for smallmodel.py and interception of logs from strout and stderr from Tensorflow.
-- smallmodel.py - MNIST dataset and perceptron NN.
 
-For two and more parameter servers model.load will not work, you should use Tensorflow Serving.
+- smallmodel.py - MNIST dataset and perceptron NN.
