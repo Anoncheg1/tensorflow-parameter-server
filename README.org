@@ -1,7 +1,9 @@
 This is Model.fit implementation approach.
 
-Code is dirty, it is research phase. For two and more parameter
+Code is dirty, it is in a research phase. For two and more parameter
  servers model.load will not work, you should use Tensorflow Serving.
+
+Look at FSDP (Fully Sharded Data Parallel) implementation for PyTorch of distributed multi-node training: https://github.com/Anoncheg1/pytorch-fsdp-multi-node
 
 *local-resnet-mobilenet.py* - главный файл обучения моделей ResNet и Mobilenet на датасете Landmark 2022 на 1 машине, использует imclassif.py
 
